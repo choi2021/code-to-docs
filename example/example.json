@@ -1,0 +1,32 @@
+{
+  "searchCriteria": [
+    {
+      "name": "CrashAnalyticsService"
+    },
+    {
+      "name": "CrashAnalyticsService",
+      "properties": [
+        "sendInfo",
+        "sendWarning",
+        "sendError"
+      ]
+    },
+    {
+      "name": "CrashAnalyticsService",
+      "methods": [
+        {
+          "methodName": "sendInfo",
+          "paramProperties": [ "error", "tag"]
+        },
+        {
+          "methodName": "sendWarning",
+          "paramProperties": [ "error",  "tag"]
+        },
+        {
+          "methodName": "sendError",
+          "paramProperties": [ "error", "tag"]
+        }
+      ]
+    }
+  ]
+}
