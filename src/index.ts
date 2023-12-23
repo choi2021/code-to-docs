@@ -107,8 +107,9 @@ function generateMarkdownTable(entryMap: LogEntryMap): string {
     return markdownTable;
 }
 
-function index(jsonFilePath: string, projectPath: string) {
-    const searchCriteria = readJSONFile(jsonFilePath);
+function main(projectPath: string) {
+    const errorLogJSONFilePath = './targetLog.json';
+    const searchCriteria = readJSONFile(errorLogJSONFilePath);
     const logEntryMap = analyzeProject(projectPath, searchCriteria);
     const markdownTable = generateMarkdownTable(logEntryMap);
     saveMarkdownToFile(markdownTable, markdownOutputPath);
@@ -118,10 +119,7 @@ function saveMarkdownToFile(markdownContent: string, filePath: string) {
     fs.writeFileSync(filePath, markdownContent);
 }
 
-const filePath = process.argv[2];
-const projectPath = process.argv[3];
-const markdownOutputPath = process.argv[4] || 'analysisResults.md';
+const projectPath = process.argv[2];
+const markdownOutputPath = process.argv[3] || 'analysisResults.md';
 
-// Usage
-// Replace 'path_to_your_json_file.json' and 'path_to_your_project' with your actual file paths
-index(filePath, projectPath);
+main(projectPath);
