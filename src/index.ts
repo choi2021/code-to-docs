@@ -2,6 +2,7 @@ import { Project, Node } from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
 import { mapMethodNameToSeverity } from './util';
+import * as domain from 'domain';
 
 export enum Severity {
     error = 'error',
@@ -28,7 +29,7 @@ interface LogEntry {
     domain: string;
 }
 
-interface LogEntryMap extends Map<string, LogEntry> {}
+interface LogEntryMap extends Map<string, LogEntry[]> {}
 
 function readJSONFile(filePath: string): SearchCriteria[] {
     const jsonData = fs.readFileSync(filePath, 'utf8');
@@ -36,7 +37,7 @@ function readJSONFile(filePath: string): SearchCriteria[] {
 }
 
 function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
-    const logEntryMap = new Map<string, LogEntry>();
+    const logEntryMap = new Map<string, LogEntry[]>();
 
     const project = new Project({
         tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
@@ -79,8 +80,9 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
                                 }
                             });
 
-                            const key = `${logEntry.title}-${logEntry.severity}-${logEntry.domain}`;
-                            logEntryMap.set(key, logEntry);
+                            const key = logEntry.domain;
+                            const logEntries = logEntryMap.get(key) ?? [];
+                            logEntryMap.set(key, [...logEntries, logEntry]);
                         }
                     }
                 }
@@ -90,12 +92,17 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
     return logEntryMap;
 }
 
-function generateMarkdownTable(entries: LogEntryMap): string {
-    let markdownTable = `| Title | Severity | Domain |\n`;
-    markdownTable += `|-------|----------|--------|\n`;
+function generateMarkdownTable(entryMap: LogEntryMap): string {
+    let markdownTable = ``;
 
-    entries.forEach((entry) => {
-        markdownTable += `| ${entry.title} | ${entry.severity} | ${entry.domain} |\n`;
+    entryMap.forEach((entries, key) => {
+        markdownTable += `## ${key}\n`;
+        markdownTable += `| Title | Severity | \n`;
+        markdownTable += `|-------|----------|\n`;
+
+        entries.forEach((entry) => {
+            markdownTable += `| ${entry.title} | ${entry.severity} |\n`;
+        });
     });
 
     return markdownTable;
