@@ -1,6 +1,14 @@
 import { Project, Node } from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
+import { mapMethodNameToSeverity } from './util';
+
+export enum Severity {
+    error = 'error',
+    warning = 'warning',
+    info = 'info',
+    debug = 'debug',
+}
 
 interface MethodCriteria {
     methodName: string;
@@ -20,6 +28,7 @@ interface LogEntry {
 }
 
 const logEntryMap = new Map<string, LogEntry>();
+const domainMap = new Map<string, string>();
 
 const result: Record<string, number> = {};
 function readJSONFile(filePath: string): SearchCriteria[] {
@@ -33,30 +42,9 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
     });
 
     criteria.forEach((criterion) => {
-        const hasProperties = criterion.properties && criterion.properties.length > 0;
-        const hasMethods = criterion.methods && criterion.methods.length > 0;
-
         project.getSourceFiles().forEach((sourceFile) => {
             sourceFile.forEachDescendant((node) => {
-                // Check for object name usage
-                if (!hasProperties && !hasMethods && Node.isIdentifier(node) && node.getText() === criterion.name) {
-                    return;
-                }
-
-                // // Check for properties usage
-                // if (
-                //     hasProperties &&
-                //     Node.isPropertyAccessExpression(node) &&
-                //     node.getExpression().getText() === criterion.name
-                // ) {
-                //     const propertyName = node.getName();
-                //     if (criterion.properties?.includes(propertyName)) {
-                //         result[propertyName] = (result[propertyName] || 0) + 1;
-                //     }
-                // }
-
-                // Check for methods and paramProperties usage
-                if (hasMethods && Node.isCallExpression(node)) {
+                if (Node.isCallExpression(node)) {
                     const callExpressionText = node.getExpression().getText();
                     if (callExpressionText.startsWith(criterion.name + '.')) {
                         const methodName = callExpressionText.split('.')[1];
@@ -70,7 +58,7 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
                             const args = node.getArguments();
                             const logEntry: LogEntry = {
                                 title: 'MapToError',
-                                severity: methodName,
+                                severity: mapMethodNameToSeverity(methodName),
                                 domain: '',
                             };
                             args.forEach((arg) => {
@@ -93,6 +81,9 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
                                 }
                             });
 
+                            if (!domainMap.has(logEntry.domain) && logEntry.domain) {
+                                domainMap.set(logEntry.domain, logEntry.domain);
+                            }
                             const key = `${logEntry.title}-${logEntry.severity}-${logEntry.domain}`;
                             logEntryMap.set(key, logEntry);
                         }
@@ -118,11 +109,16 @@ function index(jsonFilePath: string, projectPath: string) {
     const searchCriteria = readJSONFile(jsonFilePath);
     analyzeProject(projectPath, searchCriteria);
     const markdownTable = generateMarkdownTable(logEntryMap);
-    console.log(markdownTable);
+    saveMarkdownToFile(markdownTable, markdownOutputPath);
+}
+
+function saveMarkdownToFile(markdownContent: string, filePath: string) {
+    fs.writeFileSync(filePath, markdownContent);
 }
 
 const filePath = process.argv[2];
 const projectPath = process.argv[3];
+const markdownOutputPath = process.argv[4] || 'analysisResults.md';
 
 // Usage
 // Replace 'path_to_your_json_file.json' and 'path_to_your_project' with your actual file paths
