@@ -10,6 +10,8 @@ export const mapMethodNameToSeverity = (methodName: string): Severity | '' => {
             return Severity.info;
         case 'debug':
             return Severity.debug;
+        case 'sendUnhandledError':
+            return Severity.unhandledError;
         default:
             return '';
     }

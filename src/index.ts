@@ -8,6 +8,7 @@ export enum Severity {
     warning = 'warning',
     info = 'info',
     debug = 'debug',
+    unhandledError = 'unhandledError',
 }
 
 interface MethodCriteria {
