@@ -28,16 +28,16 @@ interface LogEntry {
     domain: string;
 }
 
-const logEntryMap = new Map<string, LogEntry>();
-const domainMap = new Map<string, string>();
+interface LogEntryMap extends Map<string, LogEntry> {}
 
-const result: Record<string, number> = {};
 function readJSONFile(filePath: string): SearchCriteria[] {
     const jsonData = fs.readFileSync(filePath, 'utf8');
     return JSON.parse(jsonData).searchCriteria;
 }
 
 function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
+    const logEntryMap = new Map<string, LogEntry>();
+
     const project = new Project({
         tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
     });
@@ -52,10 +52,7 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
                         const targetMethod = criterion.methods?.find((m) => m.methodName === methodName);
                         const targetMethodParams = targetMethod?.paramProperties ?? [];
 
-                        if (targetMethodParams.length === 0) {
-                            // If method has parameters, record the method name
-                            result[methodName] = (result[methodName] || 0) + 1;
-                        } else {
+                        if (targetMethodParams.length > 0) {
                             const args = node.getArguments();
                             const logEntry: LogEntry = {
                                 title: 'MapToError',
@@ -82,9 +79,6 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
                                 }
                             });
 
-                            if (!domainMap.has(logEntry.domain) && logEntry.domain) {
-                                domainMap.set(logEntry.domain, logEntry.domain);
-                            }
                             const key = `${logEntry.title}-${logEntry.severity}-${logEntry.domain}`;
                             logEntryMap.set(key, logEntry);
                         }
@@ -93,9 +87,10 @@ function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
             });
         });
     });
+    return logEntryMap;
 }
 
-function generateMarkdownTable(entries: typeof logEntryMap): string {
+function generateMarkdownTable(entries: LogEntryMap): string {
     let markdownTable = `| Title | Severity | Domain |\n`;
     markdownTable += `|-------|----------|--------|\n`;
 
@@ -108,7 +103,7 @@ function generateMarkdownTable(entries: typeof logEntryMap): string {
 
 function index(jsonFilePath: string, projectPath: string) {
     const searchCriteria = readJSONFile(jsonFilePath);
-    analyzeProject(projectPath, searchCriteria);
+    const logEntryMap = analyzeProject(projectPath, searchCriteria);
     const markdownTable = generateMarkdownTable(logEntryMap);
     saveMarkdownToFile(markdownTable, markdownOutputPath);
 }
