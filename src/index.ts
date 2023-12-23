@@ -2,7 +2,6 @@ import { Project, Node } from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
 import { mapMethodNameToSeverity } from './util';
-import * as domain from 'domain';
 
 export enum Severity {
     error = 'error',
@@ -97,11 +96,11 @@ function generateMarkdownTable(entryMap: LogEntryMap): string {
 
     entryMap.forEach((entries, key) => {
         markdownTable += `## ${key}\n`;
-        markdownTable += `| Title | Severity | \n`;
+        markdownTable += `| 에러 메시지 | 분류 | \n`;
         markdownTable += `|-------|----------|\n`;
 
         entries.forEach((entry) => {
-            markdownTable += `| ${entry.title} | ${entry.severity} |\n`;
+            markdownTable += `| \`${entry.title}\` | ${entry.severity} |\n`;
         });
     });
 
