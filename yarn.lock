@@ -101,6 +101,11 @@
     "mkdirp" "^3.0.1"
     "path-browserify" "^1.0.1"
 
+"@types/figlet@^1.5.8":
+  "integrity" "sha512-G22AUvy4Tl95XLE7jmUM8s8mKcoz+Hr+Xm9W90gJsppJq9f9tHvOGkrpn4gRX0q/cLtBdNkWtWCKDg2UDZoZvQ=="
+  "resolved" "https://registry.npmjs.org/@types/figlet/-/figlet-1.5.8.tgz"
+  "version" "1.5.8"
+
 "@types/json-schema@^7.0.12":
   "integrity" "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="
   "resolved" "https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.15.tgz"
@@ -325,6 +330,11 @@
   "integrity" "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA=="
   "resolved" "https://registry.npmjs.org/color-name/-/color-name-1.1.4.tgz"
   "version" "1.1.4"
+
+"commander@^11.1.0":
+  "integrity" "sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ=="
+  "resolved" "https://registry.npmjs.org/commander/-/commander-11.1.0.tgz"
+  "version" "11.1.0"
 
 "concat-map@0.0.1":
   "integrity" "sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg=="
@@ -564,6 +574,11 @@
   "version" "1.16.0"
   dependencies:
     "reusify" "^1.0.4"
+
+"figlet@^1.7.0":
+  "integrity" "sha512-gO8l3wvqo0V7wEFLXPbkX83b7MVjRrk1oRLfYlZXol8nEpb/ON9pcKLI4qpBv5YtOTfrINtqb7b40iYY2FTWFg=="
+  "resolved" "https://registry.npmjs.org/figlet/-/figlet-1.7.0.tgz"
+  "version" "1.7.0"
 
 "file-entry-cache@^6.0.1":
   "integrity" "sha512-7Gps/XWymbLk2QLYK4NzpMOrYjMhdIxXuIvy2QBsLE6ljuodKvdkWs/cpyJJ3CVIVpH0Oi1Hvg1ovbMzLdFBBg=="

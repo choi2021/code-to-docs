@@ -107,7 +107,11 @@ function generateMarkdownTable(entryMap: LogEntryMap): string {
     return markdownTable;
 }
 
-function main(projectPath: string) {
+function saveMarkdownToFile(markdownContent: string, filePath: string) {
+    fs.writeFileSync(filePath, markdownContent);
+}
+
+export function main(projectPath: string,markdownOutputPath:string) {
     const errorLogJSONFilePath = './targetLog.json';
     const searchCriteria = readJSONFile(errorLogJSONFilePath);
     const logEntryMap = analyzeProject(projectPath, searchCriteria);
@@ -115,11 +119,3 @@ function main(projectPath: string) {
     saveMarkdownToFile(markdownTable, markdownOutputPath);
 }
 
-function saveMarkdownToFile(markdownContent: string, filePath: string) {
-    fs.writeFileSync(filePath, markdownContent);
-}
-
-const projectPath = process.argv[2];
-const markdownOutputPath = process.argv[3] || 'analysisResults.md';
-
-main(projectPath);

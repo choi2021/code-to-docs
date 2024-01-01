@@ -13,7 +13,7 @@ npm install -g code-to-docs
 패키지를 실행하려면 TypeScript 프로젝트의 경로를 제공하고, 선택적으로 생성된 마크다운 파일의 출력 경로를 제공합니다:
 
 ```bash
-codeToDocs /path/to/project [/path/to/output.md]
+ctd /path/to/project [/path/to/output.md]
 ```
 
 출력 경로가 지정되지 않은 경우 기본값으로 analysisResults.md로 저장됩니다.

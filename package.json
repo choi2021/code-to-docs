@@ -1,13 +1,15 @@
 {
   "name": "code-to-docs",
-  "version": "0.1.0",
+  "version": "0.0.2",
   "description": "A command-line tool to analyze TypeScript projects and generate Markdown documentation based on predefined search criteria.",
   "main": "index.js",
   "bin": {
-    "codeToDocs": "./index.js"
+    "ctd": "./dist/cli.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start":"ts-node ./src/cli.ts",
+    "build": "tsc"
   },
   "keywords": [
     "typescript",
@@ -19,9 +21,12 @@
   "author": "Troy Choi",
   "license": "MIT",
   "dependencies": {
+    "commander": "^11.1.0",
+    "figlet": "^1.7.0",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
+    "@types/figlet": "^1.5.8",
     "@types/node": "^20.10.5",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
