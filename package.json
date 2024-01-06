@@ -1,6 +1,6 @@
 {
   "name": "code-to-docs",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "description": "A command-line tool to analyze TypeScript projects and generate Markdown documentation based on predefined search criteria.",
   "main": "index.js",
   "bin": {
