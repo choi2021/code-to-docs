@@ -17,3 +17,8 @@ ctd /path/to/project [/path/to/output.md]
 ```
 
 출력 경로가 지정되지 않은 경우 기본값으로 analysisResults.md로 저장됩니다.
+
+
+## 아키텍처
+
+![img.png](img.png)
