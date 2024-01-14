@@ -1,26 +1,6 @@
 import { Project, Node, SyntaxKind } from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
-import { mapMethodNameToSeverity } from './util';
-
-export enum Severity {
-    error = 'error',
-    warning = 'warning',
-    info = 'info',
-    debug = 'debug',
-    unhandledError = 'unhandledError',
-}
-
-interface MethodCriteria {
-    methodName: string;
-    paramProperties?: string[];
-}
-
-interface SearchCriteria {
-    name: string;
-    properties?: string[];
-    methods?: MethodCriteria[];
-}
 
 interface LogEntry {
     title: string;
@@ -31,101 +11,121 @@ interface LogEntry {
 
 interface LogEntryMap extends Map<string, LogEntry[]> {}
 
-const isToast = (text: string) => {
-    return text.includes('ToastService') || text.includes('toast');
-};
-
-const isModal = (text: string) => {
-    return text.includes('alert');
-};
-
-function readJSONFile(filePath: string): SearchCriteria[] {
-    const jsonData = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(jsonData).searchCriteria;
-}
-
-function analyzeProject(projectPath: string, criteria: SearchCriteria[]) {
+function analyzeProject(projectPath: string) {
     const logEntryMap = new Map<string, LogEntry[]>();
 
     const project = new Project({
         tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
     });
 
-    criteria.forEach((criterion) => {
-        project.getSourceFiles().forEach((sourceFile) => {
-            sourceFile.forEachDescendant((node) => {
-                // Rule
-                if (Node.isCallExpression(node)) {
-                    const callExpressionText = node.getExpression().getText();
-                    // CrashAnalyticsService 찾기
-                    if (callExpressionText.startsWith(criterion.name + '.')) {
-                        const methodName = callExpressionText.split('.')[1];
-                        const targetMethod = criterion.methods?.find((m) => m.methodName === methodName);
-                        const targetMethodParams = targetMethod?.paramProperties ?? [];
+    project.getSourceFiles().forEach((sourceFile) => {
+        sourceFile.forEachDescendant((node) => {
+            // Rule
 
-                        if (targetMethodParams.length > 0) {
-                            const args = node.getArguments();
-                            const logEntry: LogEntry = {
-                                title: 'MapToError',
-                                severity: mapMethodNameToSeverity(methodName),
-                                domain: '',
-                                reason: '예외처리 없음',
-                            };
+            const isToast = (text: string) => {
+                return text.includes('ToastService') || text.includes('toast');
+            };
 
-                            args.forEach((arg) => {
-                                if (Node.isObjectLiteralExpression(arg)) {
-                                    arg.forEachChild((node) => {
-                                        const child = node.getText();
-                                        const errorRegex = /new Error\('([^']*)'\)/;
-                                        const errorRegexMatches = child.match(errorRegex);
+            const isModal = (text: string) => {
+                return text.includes('alert');
+            };
 
-                                        const tagRex = /tag: ErrorTag\.([^,]*)/;
-                                        const tagRegexMatches = child.match(tagRex);
+            enum Severity {
+                error = 'error',
+                warning = 'warning',
+                info = 'info',
+                debug = 'debug',
+                unhandledError = 'unhandledError',
+            }
 
-                                        if (errorRegexMatches) {
-                                            logEntry.title = errorRegexMatches[1];
-                                        }
-                                        if (tagRegexMatches) {
-                                            logEntry.domain = tagRegexMatches[1];
-                                        }
-                                    });
-                                }
-                            });
+            const mapMethodNameToSeverity = (methodName: string): Severity | '' => {
+                switch (methodName) {
+                    case 'sendError':
+                        return Severity.error;
+                    case 'sendWarning':
+                        return Severity.warning;
+                    case 'sendInfo':
+                        return Severity.info;
+                    case 'debug':
+                        return Severity.debug;
+                    case 'sendUnhandledError':
+                        return Severity.unhandledError;
+                    default:
+                        return '';
+                }
+            };
 
-                            if (methodName === 'sendInfo') {
-                                const CatchClause = node.getFirstAncestorByKind(SyntaxKind.CatchClause);
+            if (Node.isCallExpression(node)) {
+                const callExpressionText = node.getExpression().getText();
+                const isCrashAnalyticsService = callExpressionText.startsWith('CrashAnalyticsService');
+                if (!isCrashAnalyticsService) return;
 
-                                let targetText = '';
+                const methodName = callExpressionText.split('.')[1];
+                const isValidMethod = ['sendError', 'sendWarning', 'sendInfo', 'sendUnhandledError']?.some(
+                    (m) => m === methodName,
+                );
 
-                                if (!CatchClause) {
-                                    const errorArrowFunction = node
-                                        .getAncestors()
-                                        .find((ancestor) => Node.isArrowFunction(ancestor));
-                                    targetText = errorArrowFunction?.getText() ?? '';
-                                } else {
-                                    targetText = CatchClause.getText();
-                                }
+                if (!isValidMethod) return;
 
-                                const isFallbackUI = logEntry.title.includes('조회 실패');
+                const args = node.getArguments();
+                const logEntry: LogEntry = {
+                    title: 'MapToError',
+                    severity: mapMethodNameToSeverity(methodName),
+                    domain: '',
+                    reason: '예외처리 없음',
+                };
 
-                                if (isToast(targetText)) {
-                                    logEntry.reason = '토스트 노출';
-                                } else if (isModal(targetText)) {
-                                    logEntry.reason = '모달 노출';
-                                } else if (isFallbackUI) {
-                                    logEntry.reason = 'fallback 화면 노출';
-                                } else {
-                                    logEntry.reason = '기록을 위한 로그';
-                                }
+                args.forEach((arg) => {
+                    if (Node.isObjectLiteralExpression(arg)) {
+                        arg.forEachChild((argNode) => {
+                            const child = argNode.getText();
+                            const errorRegex = /new Error\('([^']*)'\)/;
+                            const errorRegexMatches = child.match(errorRegex);
+
+                            const tagRex = /tag: ErrorTag\.([^,]*)/;
+                            const tagRegexMatches = child.match(tagRex);
+
+                            if (errorRegexMatches) {
+                                logEntry.title = errorRegexMatches[1];
                             }
+                            if (tagRegexMatches) {
+                                logEntry.domain = tagRegexMatches[1];
+                            }
+                        });
+                    }
+                });
 
-                            const key = logEntry.domain;
-                            const logEntries = logEntryMap.get(key) ?? [];
-                            logEntryMap.set(key, [...logEntries, logEntry]);
-                        }
+                if (methodName === 'sendInfo') {
+                    const CatchClause = node.getFirstAncestorByKind(SyntaxKind.CatchClause);
+
+                    let targetText = '';
+
+                    if (!CatchClause) {
+                        const errorArrowFunction = node
+                            .getAncestors()
+                            .find((ancestor) => Node.isArrowFunction(ancestor));
+                        targetText = errorArrowFunction?.getText() ?? '';
+                    } else {
+                        targetText = CatchClause.getText();
+                    }
+
+                    const isFallbackUI = logEntry.title.includes('조회 실패');
+
+                    if (isToast(targetText)) {
+                        logEntry.reason = '토스트 노출';
+                    } else if (isModal(targetText)) {
+                        logEntry.reason = '모달 노출';
+                    } else if (isFallbackUI) {
+                        logEntry.reason = 'fallback 화면 노출';
+                    } else {
+                        logEntry.reason = '기록을 위한 로그';
                     }
                 }
-            });
+
+                const key = logEntry.domain;
+                const logEntries = logEntryMap.get(key) ?? [];
+                logEntryMap.set(key, [...logEntries, logEntry]);
+            }
         });
     });
     return logEntryMap;
@@ -152,9 +152,7 @@ function saveMarkdownToFile(markdownContent: string, filePath: string) {
 }
 
 export function main(projectPath: string, markdownOutputPath: string) {
-    const errorLogJSONFilePath = './targetLog.json';
-    const searchCriteria = readJSONFile(errorLogJSONFilePath);
-    const logEntryMap = analyzeProject(projectPath, searchCriteria);
+    const logEntryMap = analyzeProject(projectPath);
     const markdownTable = generateMarkdownTable(logEntryMap);
     saveMarkdownToFile(markdownTable, markdownOutputPath);
 }
