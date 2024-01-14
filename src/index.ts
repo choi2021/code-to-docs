@@ -1,6 +1,7 @@
-import { Project, Node, SyntaxKind } from 'ts-morph';
+import { Project } from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
+import { rules } from './rules';
 
 interface LogEntry {
     title: string;
@@ -9,7 +10,7 @@ interface LogEntry {
     reason: string;
 }
 
-interface LogEntryMap extends Map<string, LogEntry[]> {}
+export interface LogEntryMap extends Map<string, LogEntry[]> {}
 
 function analyzeProject(projectPath: string) {
     const logEntryMap = new Map<string, LogEntry[]>();
@@ -21,111 +22,7 @@ function analyzeProject(projectPath: string) {
     project.getSourceFiles().forEach((sourceFile) => {
         sourceFile.forEachDescendant((node) => {
             // Rule
-
-            const isToast = (text: string) => {
-                return text.includes('ToastService') || text.includes('toast');
-            };
-
-            const isModal = (text: string) => {
-                return text.includes('alert');
-            };
-
-            enum Severity {
-                error = 'error',
-                warning = 'warning',
-                info = 'info',
-                debug = 'debug',
-                unhandledError = 'unhandledError',
-            }
-
-            const mapMethodNameToSeverity = (methodName: string): Severity | '' => {
-                switch (methodName) {
-                    case 'sendError':
-                        return Severity.error;
-                    case 'sendWarning':
-                        return Severity.warning;
-                    case 'sendInfo':
-                        return Severity.info;
-                    case 'debug':
-                        return Severity.debug;
-                    case 'sendUnhandledError':
-                        return Severity.unhandledError;
-                    default:
-                        return '';
-                }
-            };
-
-            if (Node.isCallExpression(node)) {
-                const callExpressionText = node.getExpression().getText();
-                const isCrashAnalyticsService = callExpressionText.startsWith('CrashAnalyticsService');
-                if (!isCrashAnalyticsService) return;
-
-                const methodName = callExpressionText.split('.')[1];
-                const isValidMethod = ['sendError', 'sendWarning', 'sendInfo', 'sendUnhandledError']?.some(
-                    (m) => m === methodName,
-                );
-
-                if (!isValidMethod) return;
-
-                const args = node.getArguments();
-                const logEntry: LogEntry = {
-                    title: 'MapToError',
-                    severity: mapMethodNameToSeverity(methodName),
-                    domain: '',
-                    reason: '예외처리 없음',
-                };
-
-                args.forEach((arg) => {
-                    if (Node.isObjectLiteralExpression(arg)) {
-                        arg.forEachChild((argNode) => {
-                            const child = argNode.getText();
-                            const errorRegex = /new Error\('([^']*)'\)/;
-                            const errorRegexMatches = child.match(errorRegex);
-
-                            const tagRex = /tag: ErrorTag\.([^,]*)/;
-                            const tagRegexMatches = child.match(tagRex);
-
-                            if (errorRegexMatches) {
-                                logEntry.title = errorRegexMatches[1];
-                            }
-                            if (tagRegexMatches) {
-                                logEntry.domain = tagRegexMatches[1];
-                            }
-                        });
-                    }
-                });
-
-                if (methodName === 'sendInfo') {
-                    const CatchClause = node.getFirstAncestorByKind(SyntaxKind.CatchClause);
-
-                    let targetText = '';
-
-                    if (!CatchClause) {
-                        const errorArrowFunction = node
-                            .getAncestors()
-                            .find((ancestor) => Node.isArrowFunction(ancestor));
-                        targetText = errorArrowFunction?.getText() ?? '';
-                    } else {
-                        targetText = CatchClause.getText();
-                    }
-
-                    const isFallbackUI = logEntry.title.includes('조회 실패');
-
-                    if (isToast(targetText)) {
-                        logEntry.reason = '토스트 노출';
-                    } else if (isModal(targetText)) {
-                        logEntry.reason = '모달 노출';
-                    } else if (isFallbackUI) {
-                        logEntry.reason = 'fallback 화면 노출';
-                    } else {
-                        logEntry.reason = '기록을 위한 로그';
-                    }
-                }
-
-                const key = logEntry.domain;
-                const logEntries = logEntryMap.get(key) ?? [];
-                logEntryMap.set(key, [...logEntries, logEntry]);
-            }
+            rules.findCrashAnalyticService.create(node, logEntryMap);
         });
     });
     return logEntryMap;
