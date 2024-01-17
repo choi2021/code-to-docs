@@ -1,19 +1,12 @@
 import { Project } from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
-import { rules } from './rules';
+import { Meta, RuleResult, rules } from './rules';
 
-interface LogEntry {
-    title: string;
-    severity: string;
-    domain: string;
-    reason: string;
-}
+type AnalyzeResult = Map<string, { meta: Meta; result: RuleResult<unknown> }>;
 
-export interface LogEntryMap extends Map<string, LogEntry[]> {}
-
-function analyzeProject(projectPath: string) {
-    const logEntryMap = new Map<string, LogEntry[]>();
+function analyzeProject(projectPath: string): AnalyzeResult {
+    const dataMap = new Map();
 
     const project = new Project({
         tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
@@ -21,35 +14,46 @@ function analyzeProject(projectPath: string) {
 
     project.getSourceFiles().forEach((sourceFile) => {
         sourceFile.forEachDescendant((node) => {
-            // Rule
-            rules.findCrashAnalyticService.create(node, logEntryMap);
+            rules.forEach((rule) => {
+                const result = rule.execute(node);
+                const { key } = rule.meta;
+                const existingData = dataMap.get(key) ?? { meta: rule.meta, result: new Map() };
+                result.forEach((value, mapKey) => {
+                    const existingEntries = existingData.result.get(mapKey) ?? [];
+                    existingData.result.set(mapKey, [...existingEntries, ...value]);
+                });
+                dataMap.set(key, existingData);
+            });
         });
     });
-    return logEntryMap;
+    return dataMap;
 }
 
-function generateMarkdownTable(entryMap: LogEntryMap): string {
-    let markdownTable = ``;
+function generateMarkdownTable(dataMap: AnalyzeResult): string {
+    let markdownTable = '';
 
-    entryMap.forEach((entries, key) => {
+    dataMap.forEach((data, key) => {
         markdownTable += `## ${key}\n`;
-        markdownTable += `| 에러 메시지 | 분류 | 분류 이유 | \n`;
-        markdownTable += `|-------|----------|----------|\n`;
 
-        entries.forEach((entry) => {
-            markdownTable += `| \`${entry.title}\` | ${entry.severity} | ${entry.reason} |\n`;
+        data.result.forEach((result, resultKey) => {
+            markdownTable += `### ${resultKey}\n`;
+            markdownTable += data.meta.headers.map((header) => `| ${header} `).join('') + '|\n';
+            markdownTable += data.meta.headers.map(() => `| ------- `).join('') + '|\n';
+            if (result instanceof Array) {
+                result.forEach((entry) => {
+                    markdownTable +=
+                        '| ' + data.meta.headersKey.map((headerKey) => `${entry[headerKey]}`).join(' | ') + ' |\n';
+                });
+            }
         });
     });
 
     return markdownTable;
 }
 
-function saveMarkdownToFile(markdownContent: string, filePath: string) {
-    fs.writeFileSync(filePath, markdownContent);
-}
-
 export function main(projectPath: string, markdownOutputPath: string) {
-    const logEntryMap = analyzeProject(projectPath);
-    const markdownTable = generateMarkdownTable(logEntryMap);
-    saveMarkdownToFile(markdownTable, markdownOutputPath);
+    const analysis = analyzeProject(projectPath);
+    const markdownTable = generateMarkdownTable(analysis);
+
+    fs.writeFileSync(markdownOutputPath, markdownTable);
 }

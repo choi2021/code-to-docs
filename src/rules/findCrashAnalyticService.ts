@@ -1,5 +1,5 @@
 import { Node, SyntaxKind, ts } from 'ts-morph';
-import { LogEntryMap } from '../index';
+import { Rule } from './index';
 
 enum Severity {
     error = 'error',
@@ -41,19 +41,28 @@ interface LogEntry {
     reason: string;
 }
 
-export const findCrashAnalyticService = {
-    create(node: Node<ts.Node>, logEntryMap: LogEntryMap) {
+export const findCrashAnalyticService: Rule<LogEntry[]> = {
+    meta: {
+        headers: ['에러 메시지', '분류', '분류 이유'],
+        headersKey: ['title', 'severity', 'reason'],
+        key: 'findCrashAnalyticService',
+        resultPath: '../findCrashAnalyticService.md',
+    },
+    execute(node: Node<ts.Node>) {
+        const result = new Map<string, LogEntry[]>();
         if (Node.isCallExpression(node)) {
             const callExpressionText = node.getExpression().getText();
             const isCrashAnalyticsService = callExpressionText.startsWith('CrashAnalyticsService');
-            if (!isCrashAnalyticsService) return;
+            if (!isCrashAnalyticsService) return result;
 
             const methodName = callExpressionText.split('.')[1];
             const isValidMethod = ['sendError', 'sendWarning', 'sendInfo', 'sendUnhandledError']?.some(
                 (m) => m === methodName,
             );
 
-            if (!isValidMethod) return;
+            if (!isValidMethod) {
+                return result;
+            }
 
             const args = node.getArguments();
             const logEntry: LogEntry = {
@@ -109,8 +118,10 @@ export const findCrashAnalyticService = {
             }
 
             const key = logEntry.domain;
-            const logEntries = logEntryMap.get(key) ?? [];
-            logEntryMap.set(key, [...logEntries, logEntry]);
+            const logEntries = result.get(key) ?? [];
+            result.set(key, [...logEntries, logEntry]);
+            return result;
         }
+        return result;
     },
 };
