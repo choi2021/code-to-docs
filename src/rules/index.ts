@@ -8,11 +8,11 @@ export interface Meta {
     headersKey: string[];
 }
 
-export interface Rule<T> {
+export interface Rule {
     meta: Meta;
-    execute(node: Node): RuleResult<T>;
+    execute(node: Node): RuleResult;
 }
 
-export interface RuleResult<T> extends Map<string, T> {}
+export type RuleResult = Map<Meta['key'], { meta: Meta; result: Map<string, unknown[]> }>;
 
 export const rules = [findCrashAnalyticService];

@@ -1,5 +1,4 @@
 import { Node, SyntaxKind, ts } from 'ts-morph';
-import { Rule } from './index';
 
 enum Severity {
     error = 'error',
@@ -41,7 +40,7 @@ interface LogEntry {
     reason: string;
 }
 
-export const findCrashAnalyticService: Rule = {
+module.exports = {
     meta: {
         headers: ['에러 메시지', '분류', '분류 이유'],
         headersKey: ['title', 'severity', 'reason'],

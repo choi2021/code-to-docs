@@ -1,17 +1,12 @@
 import { Project } from 'ts-morph';
 import fs from 'fs';
 import path from 'path';
-import { Meta, RuleResult, rules } from './rules';
+import { Meta, Rule, RuleResult, rules as GlobalRules } from './rules';
 
-type AnalyzeResult = Map<string, { meta: Meta; result: RuleResult<unknown> }>;
+type AnalyzeResult = Map<string, { meta: Meta; result: RuleResult }>;
 
-function analyzeProject(projectPath: string): AnalyzeResult {
+function analyzeProject(project: Project, rules: Rule[]): AnalyzeResult {
     const dataMap = new Map();
-
-    const project = new Project({
-        tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
-    });
-
     project.getSourceFiles().forEach((sourceFile) => {
         sourceFile.forEachDescendant((node) => {
             rules.forEach((rule) => {
@@ -51,9 +46,36 @@ function generateMarkdownTable(dataMap: AnalyzeResult): string {
     return markdownTable;
 }
 
-export function main(projectPath: string, markdownOutputPath: string) {
-    const analysis = analyzeProject(projectPath);
-    const markdownTable = generateMarkdownTable(analysis);
+function getLocalRules(projectPath: string): Rule[] {
+    const rulesPath = path.join(projectPath, 'ctd');
+    const files = fs.readdirSync(rulesPath) ?? [];
+    const cwd = process.cwd();
 
+    return files
+        .filter((file) => file.endsWith('.ts' || 'js'))
+        .map((file) => {
+            const rule = require(path.join(cwd, rulesPath, file));
+            return rule;
+        })
+        .filter((rule) => isRule(rule));
+}
+
+function isRule(rule: unknown): rule is Rule {
+    if (typeof rule === 'object' && rule !== null) {
+        if ('execute' in rule && 'meta' in rule) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export function main(projectPath: string, markdownOutputPath: string) {
+    const project = new Project({
+        tsConfigFilePath: path.join(projectPath, 'tsconfig.json'),
+    });
+
+    const rules = [...GlobalRules, ...getLocalRules(projectPath)];
+    const analysis = analyzeProject(project, rules);
+    const markdownTable = generateMarkdownTable(analysis);
     fs.writeFileSync(markdownOutputPath, markdownTable);
 }
